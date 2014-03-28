@@ -1,0 +1,4 @@
+*.txt
+*.conll09
+**/*.txt
+**/*.conll09

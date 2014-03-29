@@ -1,7 +1,7 @@
 #coding: utf-8
 
 from random import choice
-
+import re
 
 
 class Corpus(dict):
@@ -9,18 +9,19 @@ class Corpus(dict):
         print 'reading corpus...'
         self.pattern = Pattern()
         lines = []
-        self.cfg = self.read_cfg(cfg_file)
+        cfg = self.read_cfg(cfg_file)
         for line in open(corpus_file):
             if len(line) > 2:
                 lines.append(line)
             else:
-                self[len(self)] = Tree(lines, self.cfg)
+                self[len(self)] = Tree(lines, cfg)
                 lines = []
                 if len(self) >= limit:
                     break
                 if len(self) % 10000 == 0:
                     print len(self)
-    
+
+
     def read_cfg(self, cfg_file):
         cfg = {}
         for line in open(cfg_file):
@@ -59,35 +60,115 @@ class Corpus(dict):
         node = choice(self.pattern.node[args][values])
         return node
 
-    def random_node_with_constraint(self, args, values):
-        pairs = sorted(zip(args, values))        
-        args = tuple([p[0] for p in pairs])
-        values = tuple([p[1] for p in pairs])
-        return choice(self.pattern.node[args][values])
+    # def random_node_with_constraint(self, args, values):
+    #     return choice(self.pattern.node[args][values])
 
     def generate_with_filter(self, args, nodes, filtern):
         wlist = []
         for node in nodes:
-            if node['mor'] != '_':
-                new_node = self.random_node_with_constraint(args, node.values(args))
+            # new_node = self.random_node_with_constraint(args, tuple([node[arg] for arg in args]))
+            # if self.pattern.node['form'][node['form']]
+
+            same_form = self.pattern.node[('form',)][(node['form'],)]
+            if len(same_form) > 10:
+                new_node = choice(same_form)
             else:
-                new_node = self.random_node_with_constraint(['wf'], [node['wf']])
+                values = tuple([node[arg] for arg in args])
+                new_node = choice(self.pattern.node[args][values])
             if filtern(new_node):
-                wlist += self.random_tree(args, new_node, filtern    )
+                wlist += self.random_tree(args, new_node, filtern)
         return wlist
 
     def random_tree(self, args, node, filtern):
         args = tuple(sorted(args))
         wlist = self.generate_with_filter(args, node.ldeps, filtern)
-        wlist.append(node['wf'])
-        wlist += self.generate_with_filter(args, node.rdeps, filtern)        
+        wlist += [node]
+        wlist += self.generate_with_filter(args, node.rdeps, filtern)      
         return wlist        
 
     def random_sentence(self, args, filtern = lambda x: True):
-        root = choice(self).root
-        wlist = self.random_tree(args, root, filtern)
-        return ' '.join(wlist)
+        sent = None
+        while not sent:
+            root = choice(self).root
+            wlist = self.random_tree(args, root, filtern)
+            sent = Sentence(wlist)
+            if not sent.is_valid():
+
+                sent = None
+
+        return sent.post_process()
         
+        
+
+
+class Sentence():
+    def __init__(self, nodes):
+        self.nodes = nodes
+        self.forms = []
+
+    # select random trees with constraints
+    def is_valid(self):
+        s = ' '.join([n['form'] for n in self.nodes])
+        if len(s) > 100 or len(s) < 50:
+            return False
+
+        # At most a pair of quote
+        lq = len([n for n in self.nodes if n['form'] == '``'])
+        rq = len([n for n in self.nodes if n['form'] == '\'\''])
+        if lq != rq or lq + rq > 2:
+            return False
+
+        if not any([n for n in self.nodes if n['pos'] not in ['VBZ', 'VBP', 'VBD']]):
+            return False
+
+        for i in range(len(self.nodes) - 1):
+            if self.nodes[i]['pos'] == 'CD' and self.nodes[i+1]['pos'] == 'CD':
+                return False
+
+        return True
+
+    # def pre_process(self):
+    #     new_nodes = []
+    #     for node in self.nodes:
+            
+
+
+    def post_process(self):
+        def no_space_before(m):
+            if m.group(0):
+                return m.group(0)[1:]
+
+        def no_space_after(m):
+            if m.group(0):
+                return m.group(0)[:-1]
+
+        def capitalize(m):
+            if m.group(0):
+                return m.group(0).upper()
+
+        # lowercase words that are not proper noun
+        for node in self.nodes:
+            if node['pos'] in ['NNP', 'NNPS'] or node['lemma'] in ['i']:
+                self.forms.append(node['form'])
+            else:
+                self.forms.append(node['form'].lower())
+
+
+        s = ' '.join(self.forms)
+        # simple replacement
+        s = s.replace('{', '(').replace('}', ')').replace('\/', '/').replace('n\'t', 'not')
+        s = re.sub(r'`` | \'\'', '"', s)
+        s = re.sub(r' [.,:!?;\'%\-)&]', no_space_before, s) # delete the space before some symbol
+        s = re.sub(r'[($\-&] ', no_space_after, s) # delete the space after some symbol
+        s = re.sub(r'\$\D', '$3.14', s)
+        s = re.sub(r' \D+%', ' 3.14%', s)
+
+
+        s = re.sub(r'\w', capitalize, s, count = 1)
+        return s
+
+
+
 
 class Node(dict):
     def __init__(self, features):
@@ -116,32 +197,30 @@ class Tree:
                 features[f] = cfg[f][1](tmp[cfg[f][0]])
             self.nodes[features['id']] = Node(features)
         h = -1        
-        for i in self.nodes:
-            head_id = self.nodes[i]['head'] 
+        for nid in self.nodes:
+            head_id = self.nodes[nid]['head_id'] 
             if head_id == 0:
-                h = i
+                h = nid
             else:
                 head = self.nodes[head_id]
-                self.nodes[i].head = head
-                head.deps.append(self.nodes[i])
-                if i < head_id:
-                    head.ldeps.append(self.nodes[i])
+                self.nodes[nid].head = head
+                head.deps.append(self.nodes[nid])
+                if nid < head_id:
+                    head.ldeps.append(self.nodes[nid])
                 else:
-                    head.rdeps.append(self.nodes[i])
+                    head.rdeps.append(self.nodes[nid])
         self.root = self.nodes[h]
         self.__set_level(self.root, 0)
 
+
+    # Helper for pretty print 
     def __set_level(self, node, level):
         node.level = level
         for c in node.deps:
             self.__set_level(c, level + 1)
 
 
-
-
-
-
-    def pprint(self, dep = True, arg = 'wf'):
+    def pprint(self, dep = True, arg = 'form'):
         for i in self.nodes:
             if self.nodes[i].head:
                 if self.nodes[i].head['id'] < i:
@@ -152,7 +231,7 @@ class Tree:
                 sign = ''
             print '\t' * self.nodes[i].level + sign + self.nodes[i][arg],
             if dep:
-                print '(%s)' % self.nodes[i]['dep']
+                print '(%s/%s)' % (self.nodes[i]['pos'], self.nodes[i]['label'])
             else:
                 print
 
@@ -295,23 +374,21 @@ class Pattern:
 
 
 def generate(output):
-    args = ['pos', 'mor']
-    corpus = Corpus('train.German.gold.conll', 'german.cfg', 1000)
+    args = ['pos', 'label']
+    corpus = Corpus('corpora/english.conll09', 'config/english.cfg', 1000)
     corpus.add_node_pattern(args)
-    corpus.add_node_pattern(['wf'])    
+    corpus.add_node_pattern(['form'])      
 
     g = open(output, 'w')
-    for i in range(2000):
-        sent = corpus.random_sentence(args, lambda x: True)#'$' not in x['pos'])
-        if len(sent.split()) < 15 and len(sent.split()) > 5:
-            print '-', sent
-            g.write(sent + '\n')
+    for i in range(100):
+        sent = corpus.random_sentence(args)#'$' not in x['pos'])
+        g.write(sent + '\n')
     g.close()
 
 
 
 def demo(): 
-    args = ['pos', 'mor']
+    args = ['pos']
     head_args = ['pos']
     deps_args = ['dep']
     corpus = Corpus('train.German.gold.conll', 'german.cfg', 100)

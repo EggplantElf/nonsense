@@ -1,4 +1,5 @@
 *.txt
 *.conll09
+*.gz
 **/*.txt
 **/*.conll09

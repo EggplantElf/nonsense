@@ -1,42 +1,53 @@
-def build(head, rest, index): 
-    if not rest:
-        return head
-    removed = []
-    for i in rest:
-        (word, pos, mor, link, label) = rest[i]
-        if link == index:
-            removed.append(i)
-            head[1].append([(index, word, pos, mor, label), []])
-    for i in removed:
-        rest.pop(i)
-    for child in head[1]:
-        child[1] = build(child, rest, child[0][0]) 
-    return head
-    
-def print_tree(tree, d):
-    print tree[0]
-    if tree[1]:
-        for child in tree[1]:
-            print '\t' * (d + 1),
-            print_tree(child, d + 1)
+# conding: utf-8
 
 
-f = open('swedish.conll09')
-corpus = {}
-sid = 0
-tmp = {}
+class Node:
+    def __init__(self, form, feat, ldeps, rdeps):
+        self.form = form
+        self.feat = feat
+        self.ldeps = ldeps
+        self.rdeps = rdeps
 
-for line in f:
-    if len(line) > 2:
-        items = line.split()
-        index, word, pos, mor, link, label = int(items[0].split('_')[-1]), items[1], items[4], \
-                    items[6], int(items[8]), items[10]
-        tmp[index] = (word, pos, mor, link, label)
-    else:
-        rindex = [i for i in tmp if tmp[i][3] == 0][0]
-        (word, pos, mor, link, label) = tmp[rindex]
-        root = [(index, word, pos, mor, label), []]
-        tree = build(root, tmp, rindex)
-        break
-    
-print_tree(tree, 0)
+    def to_str(self):
+        return '%s %s %s' %(' '.join([d.to_str() for d in self.ldeps]),\
+                            self.form,\
+                            ' '.join([d.to_str() for d in self.rdeps]))
+
+
+
+
+    def len(self):
+        return 1 + sum(d.len() for d in self.ldeps + self.rdeps)
+
+    def struct(self):
+        for d in self.ldeps:
+            d.struct()
+        print '\t', self.form, '\n'
+        for d in self.rdeps:
+            d.struct()
+
+    def show(self):
+        print self.info()
+        print 'left: [%s]' % ' '.join([n.info() for n in self.ldeps]) #filter punctuations
+        print 'right: [%s]' % ' '.join([n.info() for n in self.rdeps])
+
+    def info(self):
+        return '(%s/%s)' % (self.form, self.feat) 
+
+
+
+class Tree:
+    def __init__(self, root):
+        self.root = root
+        self.glob_feat = None
+        self.len = root.len()
+        self.str = root.to_str()
+        self.wlist = self.str.split(' ')
+
+
+class Feat:
+    def __init__(self):
+        pass
+
+    def get_feat(self):
+        return None

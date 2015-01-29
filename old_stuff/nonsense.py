@@ -104,10 +104,19 @@ class Collection(dict):
         for dep in node['ldeps'] + node['rdeps']:
             self.add_node(dep, node_attrs, dep_attrs)
 
-    def filter(self, filter_pattern):
+    def filter(self, filter_pattern, fuzzy = False, inverse = False):
         new_collection = {}
         for p in self:
-            nodes = filter(filter_pattern.match, self[p])
+            if fuzzy:
+                func = filter_pattern.fuzzy_match:
+            else:
+                func = filter_pattern.match
+
+            if inverse:
+                func = lambda x: not func(x)
+
+            nodes = filter(func, self[p])
+            
             if nodes:
                 new_pstr = str(dict(filter_pattern.items() + eval(p).items()))
                 new_collection[new_pstr] = nodes
@@ -115,7 +124,8 @@ class Collection(dict):
 
 
 class Pattern(dict):
-    def __init__(self, form = None, lemma = None, pos = None, label = None, ldeps = None, rdeps = None):
+    # be aware the arguments should be list, even though there are only one
+    def __init__(self, form = [], lemma = [], pos = [], label = [], ldeps = None, rdeps = None):
         self['form'] = form
         self['lemma'] = lemma
         self['pos'] = pos
@@ -126,7 +136,7 @@ class Pattern(dict):
     # need extension
     def simulate(self, node, node_attrs, dep_attrs):
         for attr in node_attrs:
-            self[attr] = node[attr]
+            self[attr] = [node[attr]]
 
         if dep_attrs:
             self['ldeps'], self['rdeps'] = [], []    
@@ -138,8 +148,6 @@ class Pattern(dict):
                 self['rdeps'].append(p)
         return self
 
-
-
     def to_string(self):
         return str(self)
 
@@ -148,7 +156,7 @@ class Pattern(dict):
 
 
     def match(self, node):
-        if any([(self[attr] and self[attr] != node[attr]) for attr in ['form', 'lemma', 'pos', 'label']]):
+        if any([(self[attr] and node[attr] not in self[attr]) for attr in ['form', 'lemma', 'pos', 'label']]):
             return False
         if self['ldeps'] != None and (len(self['ldeps']) != len(node['ldeps']) \
                 or not all([p.match(n) for (p, n) in zip(self['ldeps'], node['ldeps'])])):
@@ -158,6 +166,30 @@ class Pattern(dict):
             return False
         return True
 
+    def fuzzy_match(self, node):
+        if any([(self[attr] and node[attr] not in self[attr]) for attr in ['form', 'lemma', 'pos', 'label']]):
+            return False
+        if self['ldeps'] != None and not all([any([p.fuzzy_match(n) for p in self['ldeps']]) for n in node['ldeps'] ]):
+            return False
+        if self['rdeps'] != None and not all([any([p.fuzzy_match(n) for p in self['rdeps']]) for n in node['rdeps'] ]):
+            return False
+        return True      
+
+
+# more powerful and tolerant, deps of node being subset of deps of pattern can pass
+# doesn't inherit simulate()
+class FuzzyPattern(Pattern):
+    def __init__(self, form = [], lemma = [], pos = [], label = [], ldeps = None, rdeps = None):
+        super.__init__(form, lemma, pos, label, ldeps, rdeps)
+
+    def match(self, node):
+        if any([(self[attr] and node[attr] not in self[attr]) for attr in ['form', 'lemma', 'pos', 'label']]):
+            return False
+        if self['ldeps'] != None and not all([any([p.match(n) for p in self['ldeps'] ]) for n in node['ldeps'] ]):
+            return False
+        if self['rdeps'] != None and not all([any([p.match(n) for p in self['rdeps'] ]) for n in node['rdeps'] ]):
+            return False
+        return True
 
 
 
@@ -199,7 +231,7 @@ def test3():
     corpus = Corpus('corpora/english.conll09', 1000)
     collection = Collection()
     collection.add_corpus(corpus, ['form'], ['pos', 'label'])
-    filter_pattern = Pattern(pos = 'VBD')
+    filter_pattern = Pattern(pos = ['VBD'])
     # print filter_pattern
     new_collection = collection.filter(filter_pattern)
 

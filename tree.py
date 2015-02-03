@@ -2,22 +2,27 @@
 
 
 class Node:
-    def __init__(self, form, feat, ldeps, rdeps):
+    def __init__(self, form, feat, ldeps = [], rdeps = [], tree = None):
         self.form = form
         self.feat = feat
         self.ldeps = ldeps
         self.rdeps = rdeps
+        self.tree = tree
 
-    def to_str(self):
-        return '%s %s %s' %(' '.join([d.to_str() for d in self.ldeps]),\
-                            self.form,\
-                            ' '.join([d.to_str() for d in self.rdeps]))
+    # def add_ldeps(self, deps):
+    #     self.ldeps.append(deps)
+
+    # def add_rdeps(self, deps):
+    #     self.rdeps.append(deps)
 
 
+    # def to_str(self):
+    #     return '%s %s %s' %(' '.join([d.to_str() for d in self.ldeps]),\
+    #                         self.form,\
+    #                         ' '.join([d.to_str() for d in self.rdeps]))
 
-
-    def len(self):
-        return 1 + sum(d.len() for d in self.ldeps + self.rdeps)
+    # def len(self):
+    #     return 1 + sum(d.len() for d in self.ldeps + self.rdeps)
 
     def struct(self):
         for d in self.ldeps:
@@ -37,17 +42,21 @@ class Node:
 
 
 class Tree:
-    def __init__(self, root):
-        self.root = root
-        self.glob_feat = None
-        self.len = root.len()
-        self.str = root.to_str()
-        self.wlist = self.str.split(' ')
-
-
-class Feat:
     def __init__(self):
-        pass
+        # self.root = root
+        self.root = None
+        self.glob_feat = None
+        self.nodes = [] #unsorted list, but not set
+        # self.str = root.to_str()
+        # self.wlist = self.str.split(' ')
 
-    def get_feat(self):
-        return None
+    def len(self):
+        return len(self.nodes)
+
+    def to_str(self):
+        # return self.root.to_str()
+        return ' '.join([n.form for n in self.nodes])
+
+    def add_node(self, node):
+        self.nodes.append(node)
+

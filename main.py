@@ -2,10 +2,11 @@
 
 from corpus import *
 from generator import *
-from constraint import *
+from editor import *
 
 def test1():
-    cor = Corpus('corpora/english.conll09', 1000)
+    edi = Editor()    
+    cor = Corpus('corpora/english.conll09', edi, 1000)
     print len(cor.feat_dict)
     # for k in sorted(cor.feat_dict.keys(), key = lambda x: sum(cor.feat_dict[x].values()), reverse = True):
         # print k, cor.feat_dict[k]
@@ -15,22 +16,25 @@ def test1():
     print cor.feat_dict[k]
 
 def test2():
-    cor = Corpus('corpora/english.conll09', 1000)
-    filt = Filter()
-    gen = Generator(cor, filt)
+    edi = Editor()    
+    cor = Corpus('corpora/english.conll09', edi, 1000)
+    gen = Generator(cor, edi)
     t = gen.generate()
     print t.str
 
 
 def test3():
-    cor = Corpus('corpora/english.conll09', 1000)
-    filt = Filter()
-    gen = Generator(cor, filt)
+    edi = Editor()
+    cor = Corpus('corpora/english.conll09', edi, 1000)
+    gen = Generator(cor, edi)
+    i = 0
     while True:
         t = gen.generate()
         # print t.len
-        if 5 < t.len < 15:
-            print t.str
+        if 5 < t.len() < 15:
+            print t.to_str()
+            i += 1
+        # if i > 500:
             break
 
 

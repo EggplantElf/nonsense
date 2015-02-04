@@ -43,15 +43,15 @@ class Node:
 
 class Tree:
     def __init__(self):
-        # self.root = root
         self.root = None
-        self.glob_feat = None
         self.nodes = [] #unsorted list, but not set
-        # self.str = root.to_str()
-        # self.wlist = self.str.split(' ')
+        self.glob_feat = None
 
     def len(self):
         return len(self.nodes)
+
+    def char_len(self):
+        return sum(len(n.form) + 1 for n in self.nodes)
 
     def to_str(self):
         # return self.root.to_str()

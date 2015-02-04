@@ -1,5 +1,5 @@
 # conding: utf-8
-
+import sys
 from corpus import *
 from generator import *
 from editor import *
@@ -30,13 +30,26 @@ def test3():
     i = 0
     while True:
         t = gen.generate()
-        # print t.len
-        if 5 < t.len() < 15:
+        print sum(len(n.form) + 1 for n in t.nodes)
+        if 50 < t.char_len() < 100:
             print t.to_str()
             i += 1
         # if i > 500:
             break
 
+def test4(word):
+    edi = Editor()
+    cor = Corpus('corpora/english.conll09', edi, 1000)
+    gen = Generator(cor, edi)
+    i = 0
+    while True:
+        t = gen.generate(word)
+        print sum(len(n.form) + 1 for n in t.nodes)
+        if 50 < t.char_len() < 100:
+            print t.to_str()
+            i += 1
+        # if i > 500:
+            break
 
 if __name__ == '__main__':
-    test3()
+    test4(sys.argv[1])

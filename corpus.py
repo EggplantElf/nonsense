@@ -9,11 +9,17 @@ class Corpus:
     def __init__(self, corpus_file, editor, limit = 999999):
         self.feat_dict = {}
         self.root_dict = {}
+        self.form_td_dict = {}
+        self.form_bu_dict = {}
         self.editor = editor
         self.read(corpus_file, limit)
         freq2dist(self.root_dict)
         for key in self.feat_dict:
             freq2dist(self.feat_dict[key])
+        for key in self.form_td_dict:
+            freq2dist(self.form_td_dict[key])
+        for key in self.form_bu_dict:
+            freq2dist(self.form_bu_dict[key])
 
 
 
@@ -57,14 +63,31 @@ class Corpus:
 
     def add_feats(self, node, is_root = False):
         f = node.feat
+        w = node.form
+
+        deps_str = ' '.join([d.feat for d in node.ldeps]) + '|' + ' '.join([d.feat for d in node.rdeps])
+        p = (w, deps_str)
+
+        # add feat_dict
         if f not in self.feat_dict:
             self.feat_dict[f] = {}
-        deps_str = ' '.join([d.feat for d in node.ldeps]) + '|' + ' '.join([d.feat for d in node.rdeps])
-        p = (node.form, deps_str)
         if p not in self.feat_dict[f]:
             self.feat_dict[f][p] = 1
         else:
             self.feat_dict[f][p] += 1
+
+        # add form_td_dict
+        if w not in self.form_td_dict:
+            self.form_td_dict[w] = {}
+        if deps_str not in self.form_td_dict[w]:
+            self.form_td_dict[w][deps_str] = 1
+        else:
+            self.form_td_dict[w][deps_str] += 1
+
+        # add form_bu_dict
+
+
+        # add root dict
         if is_root:
             if f not in self.root_dict:
                 self.root_dict[f] = 1

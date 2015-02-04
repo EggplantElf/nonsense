@@ -1,1 +1,1 @@
-This square composer here draws some delicious nonsense pancake.
+This square composer here draws some delicious nonsense pancake. 

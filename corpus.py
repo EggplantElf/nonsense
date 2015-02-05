@@ -7,23 +7,23 @@ class Corpus:
     # need refine feat: pos_label, word_pos_label, sense_pos_label, rhyme_pos_label etc.
     # compute freq for dict
     def __init__(self, corpus_file, editor, limit = 999999):
-        self.feat_dict = {}
+        self.feat_td_dict = {}
+        self.feat_bu_dict = {}
         self.root_dict = {}
-        self.form_td_dict = {}
-        self.form_bu_dict = {}
+        self.form_dict = {}
         self.editor = editor
         self.read(corpus_file, limit)
         freq2dist(self.root_dict)
-        for key in self.feat_dict:
-            freq2dist(self.feat_dict[key])
-        for key in self.form_td_dict:
-            freq2dist(self.form_td_dict[key])
-        for key in self.form_bu_dict:
-            freq2dist(self.form_bu_dict[key])
+        for key in self.feat_td_dict:
+            freq2dist(self.feat_td_dict[key])
+        for key in self.form_dict:
+            freq2dist(self.form_dict[key])
+        for key in self.feat_bu_dict:
+            freq2dist(self.feat_bu_dict[key])
 
 
 
-    def read(self, corpus_file, limit):
+    def read(self, corpus_file, limit = 999999):
         count = 0
         lines = []
         for line in open(corpus_file):
@@ -31,6 +31,9 @@ class Corpus:
                 lines.append(line.strip())
             else:
                 self.add_feats(self.temp_tree(lines), True)
+                # k = self.feat_bu_dict.keys()[1]
+                # print k, self.feat_bu_dict[k]
+                # exit(0)
                 count += 1
                 lines = []
                 if count >= limit:
@@ -65,34 +68,60 @@ class Corpus:
         f = node.feat
         w = node.form
 
-        deps_str = ' '.join([d.feat for d in node.ldeps]) + '|' + ' '.join([d.feat for d in node.rdeps])
-        p = (w, deps_str)
-
-        # add feat_dict
-        if f not in self.feat_dict:
-            self.feat_dict[f] = {}
-        if p not in self.feat_dict[f]:
-            self.feat_dict[f][p] = 1
-        else:
-            self.feat_dict[f][p] += 1
-
-        # add form_td_dict
-        if w not in self.form_td_dict:
-            self.form_td_dict[w] = {}
-        if deps_str not in self.form_td_dict[w]:
-            self.form_td_dict[w][deps_str] = 1
-        else:
-            self.form_td_dict[w][deps_str] += 1
-
-        # add form_bu_dict
-
-
         # add root dict
         if is_root:
             if f not in self.root_dict:
                 self.root_dict[f] = 1
             else:
                 self.root_dict[f] += 1
+
+        # add feat_td_dict
+        deps_str = ' '.join([d.feat for d in node.ldeps]) \
+                 + '|' + ' '.join([d.feat for d in node.rdeps])
+        p = (w, deps_str)
+        if f not in self.feat_td_dict:
+            self.feat_td_dict[f] = {}
+        if p not in self.feat_td_dict[f]:
+            self.feat_td_dict[f][p] = 1
+        else:
+            self.feat_td_dict[f][p] += 1
+
+        # add form_dict
+        p = (node.feat, deps_str)
+        if w not in self.form_dict:
+            self.form_dict[w] = {}
+        if p not in self.form_dict[w]:
+            self.form_dict[w][p] = 1
+        else:
+            self.form_dict[w][p] += 1
+
+        # add feat_bu_dict
+        # left deps
+        for l in node.ldeps:
+            deps_str = ' '.join([(d.feat if d != l else '@_@') for d in node.ldeps]) \
+                     + '|' + ' '.join([d.feat for d in node.rdeps])
+            f = l.feat
+            t = (node.form, node.feat, deps_str)
+            if f not in self.feat_bu_dict:
+                self.feat_bu_dict[f] = {}
+            if t not in self.feat_bu_dict[f]:
+                self.feat_bu_dict[f][t] = 1
+            else:
+                self.feat_bu_dict[f][t] += 1
+        # right deps
+        for r in node.rdeps:
+            deps_str = ' '.join([d.feat for d in node.ldeps]) + '|' \
+                     + ' '.join([(d.feat if d != r else '@_@') for d in node.rdeps])
+            f = r.feat
+            t = (node.form, node.feat, deps_str)
+            if f not in self.feat_bu_dict:
+                self.feat_bu_dict[f] = {}
+            if t not in self.feat_bu_dict[f]:
+                self.feat_bu_dict[f][t] = 1
+            else:
+                self.feat_bu_dict[f][t] += 1
+
+        # recursively add feats for deps
         for d in node.ldeps + node.rdeps:
             self.add_feats(d)
 

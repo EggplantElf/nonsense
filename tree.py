@@ -7,22 +7,8 @@ class Node:
         self.feat = feat
         self.ldeps = ldeps
         self.rdeps = rdeps
+        self.head = None
         self.tree = tree
-
-    # def add_ldeps(self, deps):
-    #     self.ldeps.append(deps)
-
-    # def add_rdeps(self, deps):
-    #     self.rdeps.append(deps)
-
-
-    # def to_str(self):
-    #     return '%s %s %s' %(' '.join([d.to_str() for d in self.ldeps]),\
-    #                         self.form,\
-    #                         ' '.join([d.to_str() for d in self.rdeps]))
-
-    # def len(self):
-    #     return 1 + sum(d.len() for d in self.ldeps + self.rdeps)
 
     def struct(self):
         for d in self.ldeps:
@@ -39,6 +25,9 @@ class Node:
     def info(self):
         return '(%s/%s)' % (self.form, self.feat) 
 
+    def loc(self, tree):
+        self.tree = tree
+        return sum([l.loc(tree) for l in self.ldeps], []) + [self] + sum([r.loc(tree) for r in self.rdeps], [])
 
 
 class Tree:
@@ -54,9 +43,13 @@ class Tree:
         return sum(len(n.form) + 1 for n in self.nodes)
 
     def to_str(self):
-        # return self.root.to_str()
         return ' '.join([n.form for n in self.nodes])
 
     def add_node(self, node):
         self.nodes.append(node)
+
+    def settle(self, root):
+        self.root = root
+        self.nodes = root.loc(self)
+
 
